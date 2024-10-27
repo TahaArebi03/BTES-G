@@ -129,6 +129,10 @@
   <ItemGroup>
     <ClCompile Include="BTES-G.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Booking.h" />
+    <ClInclude Include="Event.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
