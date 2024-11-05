@@ -1,0 +1,309 @@
+#include <iostream>
+#include <vector>
+#include <string>
+#include <stdexcept>
+#include <fstream>
+
+using namespace std;
+
+// Class to manage individual seat details
+class Seat {
+    int seatNumber;
+    bool isReserved;
+
+public:
+    Seat(int number) : seatNumber(number), isReserved(false) {}
+    int getSeatNumber() const { return seatNumber; }
+    bool checkAvailability() const { return !isReserved; }
+    void reserve() {
+        if (isReserved) throw runtime_error("Seat already reserved.");
+        isReserved = true;
+    }
+};
+
+// Class to store event details
+class Event {
+    int eventID;
+    string name;
+    string type;
+    string date;
+    string location;
+    vector<Seat> seats;
+    static vector<Event> events;
+    static int nextEventID;
+
+public:
+    Event(const string& eventName, const string& eventType, const string& eventDate, const string& eventLocation, int seatCount);
+    static void addEvent(const string& eventName, const string& eventType, const string& eventDate, const string& eventLocation, int seatCount);
+    static void deleteEvent(int eventID);
+    static void viewEvents();
+    static const vector<Event>& getEvents();
+    static Event* findEventByID(int eventID);
+    int getEventID() const { return eventID; }
+    string getName() const;
+    int getAvailableSeats() const;
+    void reserveSeat(int seatNumber);
+    void displaySeats() const;
+    static void saveToFile(const string& filename);
+};
+
+// Initialize static members
+vector<Event> Event::events;
+int Event::nextEventID = 1;
+
+Event::Event(const string& eventName, const string& eventType, const string& eventDate, const string& eventLocation, int seatCount)
+    : eventID(nextEventID++), name(eventName), type(eventType), date(eventDate), location(eventLocation) {
+    for (int i = 1; i <= seatCount; ++i) {
+        seats.push_back(Seat(i));
+    }
+}
+
+void Event::addEvent(const string& eventName, const string& eventType, const string& eventDate, const string& eventLocation, int seatCount) {
+    if (eventName.empty() || seatCount <= 0) throw invalid_argument("Invalid event name or seat count.");
+
+    events.push_back(Event(eventName, eventType, eventDate, eventLocation, seatCount));
+    cout << "Event added successfully.\n";
+    saveToFile("events.txt");
+}
+
+void Event::deleteEvent(int eventID) {
+    for (auto it = events.begin(); it != events.end(); ++it) {
+        if (it->getEventID() == eventID) {
+            events.erase(it);
+            cout << "Event deleted successfully.\n";
+            saveToFile("events.txt");
+            return;
+        }
+    }
+    throw out_of_range("Event ID does not exist.");
+}
+
+void Event::viewEvents() {
+    cout << "--- Current Events ---\n";
+    for (const Event& event : events) {
+        cout << "ID: " << event.getEventID() << ", Name: " << event.getName() 
+             << " - Type: " << event.type << ", Date: " << event.date 
+             << ", Location: " << event.location
+             << " - Available Seats: " << event.getAvailableSeats() << endl;
+    }
+}
+
+const vector<Event>& Event::getEvents() {
+    return events;
+}
+
+Event* Event::findEventByID(int eventID) {
+    for (Event& event : events) {
+        if (event.getEventID() == eventID) return &event;
+    }
+    return nullptr;
+}
+
+string Event::getName() const {
+    return name;
+}
+
+int Event::getAvailableSeats() const {
+    int availableSeats = 0;
+    for (const Seat& seat : seats) {
+        if (seat.checkAvailability()) ++availableSeats;
+    }
+    return availableSeats;
+}
+
+void Event::reserveSeat(int seatNumber) {
+    if (seatNumber < 1 || seatNumber > seats.size()) throw out_of_range("Invalid seat number.");
+    seats[seatNumber - 1].reserve();
+}
+
+void Event::displaySeats() const {
+    cout << "Seats for event '" << name << "':\n";
+    for (const Seat& seat : seats) {
+        cout << "Seat " << seat.getSeatNumber() << " - " << (seat.checkAvailability() ? "Available" : "Reserved") << endl;
+    }
+}
+
+void Event::saveToFile(const string& filename) {
+    ofstream outFile(filename);
+    if (!outFile) {
+        throw runtime_error("Unable to open file for writing.");
+    }
+for (const Event& event : events) {
+        outFile << event.getEventID() << " " << event.getName() << " " << event.type << " " << event.date << " "
+                << event.location << " " << event.getAvailableSeats() << endl;
+    }
+
+    outFile.close();
+}
+
+// Definitions for Menu class
+class Menu {
+public:
+    void showAdminMenu();
+    void showUserMenu();
+    void clearScreen();
+};
+
+void Menu::clearScreen() {
+#ifdef _WIN32
+    system("cls");
+#else
+    system("clear");
+#endif
+}
+
+void Menu::showAdminMenu() {
+    clearScreen();
+    int choice;
+    cout << "\n--- Admin Menu ---\n";
+    cout << "1. Add Event\n";
+    cout << "2. Delete Event\n";
+    cout << "3. View Events\n";
+    cout << "0. Return to Main Menu\n";
+    cout << "Select an option: ";
+    cin >> choice;
+
+    try {
+        switch (choice) {
+        case 1: {
+            string eventName, eventType, eventDate, eventLocation;
+            int seatCount;
+            cout << "Enter event name: ";
+            cin >> eventName;
+            cout << "Enter event type: ";
+            cin >> eventType;
+            cout << "Enter event date (YYYY-MM-DD): ";
+            cin >> eventDate;
+            cout << "Enter event location: ";
+            cin >> eventLocation;
+            cout << "Enter seat count: ";
+            cin >> seatCount;
+            Event::addEvent(eventName, eventType, eventDate, eventLocation, seatCount);
+            break;
+        }
+        case 2: {
+            int eventID;
+            cout << "Enter event ID to delete: ";
+            cin >> eventID;
+            Event::deleteEvent(eventID);
+            break;
+        }
+        case 3:
+            Event::viewEvents();
+            break;
+        case 0:
+            return;
+        default:
+            cerr << "Invalid choice.\n";
+        }
+    }
+    catch (const exception& e) {
+        cerr << "Error: " << e.what() << endl;
+    }
+
+    cin.ignore();
+    cout << "Press Enter to continue...";
+    cin.get();
+}
+
+void Menu::showUserMenu() {
+    int choice;
+
+    while (true) {
+        clearScreen();
+        cout << "\n--- User Menu ---\n";
+        cout << "1. Select Event by ID\n";
+        cout << "2. View Seats\n";
+        cout << "3. Book Seats\n";
+        cout << "0. Return to Main Menu\n";
+        cout << "Select an option: ";
+        cin >> choice;
+
+        try {
+            switch (choice) {
+            case 1: {
+                int eventID;
+                cout << "--- Available Events ---\n";
+                Event::viewEvents();
+                cout << "Enter event ID to select: ";
+                cin >> eventID;
+                Event* selectedEvent = Event::findEventByID(eventID);
+                if (!selectedEvent) throw out_of_range("Invalid event ID.");
+                cout << "Event selected: " << selectedEvent->getName() << endl;
+                break;
+            }
+            case 2: {
+                int eventID;
+                cout << "Enter event ID to view seats: ";
+                cin >> eventID;
+                Event* event = Event::findEventByID(eventID);
+                if (!event) throw out_of_range("Invalid event ID.");
+                event->displaySeats();
+                break;
+            }
+            case 3: {
+                int eventID, numSeats;
+                cout << "Enter event ID to book seats: ";
+                cin >> eventID;
+                Event* event = Event::findEventByID(eventID);
+                if (!event) throw out_of_range("Invalid event ID.");
+                cout << "Enter number of seats to book: ";
+                cin >> numSeats;
+                for (int i = 0; i < numSeats; ++i) {
+                    int seatNumber;
+                    cout << "Enter seat number to book: ";
+                    cin >> seatNumber;
+                    event->reserveSeat(seatNumber);
+}
+                cout << numSeats << " seats successfully booked.\n";
+                break;
+            }
+            case 0:
+                return;
+            default:
+                cerr << "Invalid choice.\n";
+            }
+        }
+        catch (const exception& e) {
+            cerr << "Error: " << e.what() << endl;
+        }
+
+        cin.ignore();
+        cout << "Press Enter to continue...";
+        cin.get();
+    }
+}
+
+int main() {
+    Menu menu;
+    int mainChoice;
+
+    while (true) {
+        menu.clearScreen();
+        cout << "\n--- Main Menu ---\n";
+        cout << "1. Admin Menu\n";
+        cout << "2. User Menu\n";
+        cout << "0. Exit\n";
+        cout << "Select an option: ";
+        cin >> mainChoice;
+
+        switch (mainChoice) {
+            case 1:
+                menu.showAdminMenu();
+                break;
+            case 2:
+                menu.showUserMenu();
+                break;
+            case 0:
+                cout << "Exiting the system. Goodbye!\n";
+                return 0;
+            default:
+                cerr << "Invalid choice. Please select a valid option.\n";
+                break;
+        }
+
+        cout << "Press Enter to return to the Main Menu...";
+        cin.ignore();
+        cin.get();
+    }
+}
