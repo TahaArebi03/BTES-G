@@ -1,0 +1,491 @@
+#include <iostream>
+#include <vector>
+#include <string>
+#include <stdexcept>
+#include <map>
+#include <fstream>
+
+using namespace std;
+
+// كلاس لتمثيل الشخص (مدير أو مستخدم)
+class Person {
+protected:
+    string username; // اسم المستخدم
+    string password; // كلمة المرور
+
+public:
+    // منشئ الكلاس لتعيين اسم المستخدم وكلمة المرور
+    Person(string user, string pass) : username(user), password(pass) {}
+
+    // دالة افتراضية خالصة لتسجيل الدخول
+    virtual bool login() = 0; 
+
+    // دوال لاسترجاع اسم المستخدم وكلمة المرور
+    string getUsername() const { return username; }
+    string getPassword() const { return password; }
+};
+
+// كلاس المدير المشتق من كلاس الشخص
+class Admin : public Person {
+public:
+    Admin(string user, string pass) : Person(user, pass) {}
+
+    // تنفيذ دالة تسجيل الدخول للمدير
+    bool login() override {
+        string enteredUsername, enteredPassword;
+        cout << "Enter admin username: ";
+        cin >> enteredUsername;
+        cout << "Enter admin password: ";
+        cin >> enteredPassword;
+
+        // التحقق من صحة اسم المستخدم وكلمة المرور
+        return (enteredUsername == username && enteredPassword == password);
+    }
+
+    // دالة لعرض قائمة خيارات المدير
+    void adminMenu(); 
+};
+
+// كلاس المستخدم المشتق من كلاس الشخص
+class User : public Person {
+public:
+    User(string user, string pass) : Person(user, pass) {}
+
+    // تنفيذ دالة تسجيل الدخول للمستخدم
+    bool login() override {
+        string enteredUsername, enteredPassword;
+        cout << "Enter username: ";
+        cin >> enteredUsername;
+        cout << "Enter password: ";
+        cin >> enteredPassword;
+
+        // التحقق من صحة اسم المستخدم وكلمة المرور
+        return (enteredUsername == username && enteredPassword == password);
+    }
+
+    // دالة لعرض قائمة خيارات المستخدم
+    void userMenu(); 
+};
+
+// إدارة المقاعد
+class Seat {
+    int seatNumber; // رقم المقعد
+    bool isReserved; // حالة الحجز
+
+public:
+    // منشئ الكلاس لتعيين الرقم الافتراضي للمقعد
+    Seat(int number) : seatNumber(number), isReserved(false) {}
+
+    // دالة لاسترجاع رقم المقعد
+    int getSeatNumber() const { return seatNumber; }
+    
+    // دالة للتحقق من توفر المقعد
+    bool checkAvailability() const { return !isReserved; }
+    
+    // دالة لحجز المقعد
+    void reserve() {
+        if (isReserved) throw runtime_error("Seat already reserved."); // استثناء إذا كان المقعد محجوزًا بالفعل
+        isReserved = true; // تعيين حالة الحجز
+    }
+};
+
+// إدارة الأحداث
+class Event {
+    int eventID; // معرف الحدث
+    string name; // اسم الحدث
+    string type; // نوع الحدث
+    string date; // تاريخ الحدث
+    string location; // موقع الحدث
+    vector<Seat> seats; // قائمة المقاعد في الحدث
+    static vector<Event> events; // قائمة الأحداث
+    static int nextEventID; // المعرف التالي المتاح
+
+public:
+    // منشئ الكلاس لتعيين خصائص الحدث
+    Event(const string& eventName, const string& eventType, const string& eventDate, const string& eventLocation, int seatCount);
+    
+    // دوال لإدارة الأحداث
+    static void addEvent(const string& eventName, const string& eventType, const string& eventDate, const string& eventLocation, int seatCount);
+    static void deleteEvent(int eventID);
+    static void viewEvents();
+    static const vector<Event>& getEvents();
+    static Event* findEventByID(int eventID);
+    
+    // دوال لاسترجاع المعلومات عن الحدث
+    int getEventID() const { return eventID; }
+    string getName() const;
+    string getLocation() const { return location; }
+    int getAvailableSeats() const;
+    void reserveSeat(int seatNumber);
+    void displaySeats() const; // لعرض المقاعد
+    static void saveToFile(const string& filename); // لحفظ الأحداث في ملف
+};
+
+// تعريف متغيرات كلاس الأحداث
+vector<Event> Event::events;
+int Event::nextEventID = 1;
+
+// تنفيذ منشئ كلاس الأحداث
+Event::Event(const string& eventName, const string& eventType, const string& eventDate, const string& eventLocation, int seatCount)
+    : eventID(nextEventID++), name(eventName), type(eventType), date(eventDate), location(eventLocation) {
+    for (int i = 1; i <= seatCount; ++i) {
+        seats.push_back(Seat(i)); // إضافة المقاعد إلى الحدث
+    }
+}
+
+// إضافة حدث جديد
+void Event::addEvent(const string& eventName, const string& eventType, const string& eventDate, const string& eventLocation, int seatCount) {
+    if (eventName.empty() || seatCount <= 0) throw invalid_argument("Invalid event name or seat count."); // تحقق من صحة المدخلات
+    events.push_back(Event(eventName, eventType, eventDate, eventLocation, seatCount)); // إضافة الحدث
+    cout << "Event added successfully.\n";
+    saveToFile("events.txt"); // حفظ الأحداث في الملف
+}
+
+// حذف حدث
+void Event::deleteEvent(int eventID) {
+    for (auto it = events.begin(); it != events.end(); ++it) {
+        if (it->getEventID() == eventID) {
+            events.erase(it); // حذف الحدث
+            cout << "Event deleted successfully.\n";
+            saveToFile("events.txt"); // تحديث الملف بعد الحذف
+            return;
+        }
+    }
+    throw out_of_range("Event ID does not exist."); // استثناء إذا لم يتم العثور على الحدث
+}
+
+// عرض الأحداث الحالية
+void Event::viewEvents() {
+    cout << "--- Current Events ---\n";
+    for (const Event& event : events) {
+        cout << "ID: " << event.getEventID() << ", Name: " << event.getName()
+             << " - Type: " << event.type << ", Date: " << event.date
+             << ", Location: " << event.location
+             << " - Available Seats: " << event.getAvailableSeats() << endl;
+    }
+}
+
+const vector<Event>& Event::getEvents() {
+    return events; // استرجاع قائمة الأحداث
+}
+
+// البحث عن حدث بواسطة المعرف
+Event* Event::findEventByID(int eventID) {
+    for (Event& event : events) {
+        if (event.getEventID() == eventID) return &event; // إرجاع الحدث إذا تم العثور عليه
+    }
+    return nullptr; // إرجاع nullptr إذا لم يتم العثور على الحدث
+}
+
+// استرجاع اسم الحدث
+string Event::getName() const {
+    return name;
+}
+
+// استرجاع عدد المقاعد المتاحة
+int Event::getAvailableSeats() const {
+    int availableSeats = 0;
+    for (const Seat& seat : seats) {
+        if (seat.checkAvailability()) ++availableSeats; // زيادة العدد إذا كان المقعد متاحًا
+    }
+    return availableSeats;
+}
+
+// حجز مقعد
+void Event::reserveSeat(int seatNumber) {
+    if (seatNumber < 1 || seatNumber > seats.size()) throw out_of_range("Invalid seat number."); // تحقق من صحة رقم المقعد
+    seats[seatNumber - 1].reserve(); // حجز المقعد
+}
+
+// عرض المقاعد
+void Event::displaySeats() const {
+    cout << "Seats for event '" << name << "':\n";
+    for (const Seat& seat : seats) {
+        cout << "Seat " << seat.getSeatNumber() << " - " << (seat.checkAvailability() ? "Available" : "Reserved") << endl;
+    }
+}
+
+// حفظ الأحداث في ملف
+void Event::saveToFile(const string& filename) {
+    ofstream outFile(filename);
+    if (!outFile) {
+        throw runtime_error("Unable to open file for writing."); // استثناء إذا لم يتم فتح الملف
+    }
+    for (const Event& event : events) {
+        outFile << event.getEventID() << " " << event.getName() << " " << event.type << " " << event.date << " "
+                << event.location << " " << event.getAvailableSeats() << endl; // كتابة تفاصيل الحدث في الملف
+    }
+    outFile.close();
+}
+
+// إدارة الحجوزات
+class Booking {
+private:
+    int userID; // معرف المستخدم
+    int eventID; // معرف الحدث
+    vector<int> reservedSeats; // المقاعد المحجوزة
+
+public:
+    Booking(int userID, int eventID, const vector<int>& seats)
+        : userID(userID), eventID(eventID), reservedSeats(seats) {}
+
+    int getUserID() const { return userID; } // استرجاع معرف المستخدم
+    int getEventID() const { return eventID; } // استرجاع معرف الحدث
+    const vector<int>& getReservedSeats() const { return reservedSeats; } // استرجاع المقاعد المحجوزة
+
+    // دوال لإدارة الحجوزات
+    void cancelBooking();
+    void modifyBooking(const vector<int>& newSeats);
+    static void viewBookings(int userID);
+};
+
+// خريطة لتخزين حجوزات المستخدمين
+map<int, vector<Booking>> userBookings;
+
+// إلغاء الحجز
+void Booking::cancelBooking() {
+    auto& bookings = userBookings[userID];
+    for (auto it = bookings.begin(); it != bookings.end(); ++it) {
+        if (it->getEventID() == eventID) {
+            bookings.erase(it); // حذف الحجز
+            cout << "Booking cancelled successfully for event ID: " << eventID << endl;
+            return;
+        }
+    }
+    throw runtime_error("No booking found to cancel."); // استثناء إذا لم يتم العثور على حجز
+}
+
+// تعديل الحجز
+void Booking::modifyBooking(const vector<int>& newSeats) {
+    auto& bookings = userBookings[userID];
+    for (Booking& booking : bookings) {
+        if (booking.getEventID() == eventID) {
+            booking.reservedSeats = newSeats;  // تعديل المقاعد
+            cout << "Booking modified successfully for event ID: " << eventID << endl;
+            return;
+        }
+    }
+    throw runtime_error("No booking found to modify."); // استثناء إذا لم يتم العثور على حجز
+}
+
+// عرض الحجوزات
+void Booking::viewBookings(int userID) {
+    const auto& bookings = userBookings[userID];
+    if (bookings.empty()) {
+        cout << "No bookings found.\n"; // إذا لم توجد حجوزات
+        return;
+    }
+    cout << "--- My Bookings ---\n";
+    for (const Booking& booking : bookings) {
+        Event* event = Event::findEventByID(booking.getEventID());
+        if (event) {
+            cout << "Event Name: " << event->getName() << ", Location: " << event->getLocation()
+                 << ", Reserved Seats: ";
+            for (int seat : booking.getReservedSeats()) {
+                cout << seat << " "; // عرض المقاعد المحجوزة
+            }
+            cout << endl;
+        }
+    }
+}
+
+// قائمة خيارات المدير
+void Admin::adminMenu() {
+    int choice;
+    while (true) {
+        cout << "\n--- Admin Menu ---\n";
+        cout << "1. Add Event\n"; // إضافة حدث
+        cout << "2. Delete Event\n"; // حذف حدث
+        cout << "3. View Events\n"; // عرض الأحداث
+        cout << "0. Return to Main Menu\n"; // العودة إلى القائمة الرئيسية
+        cout << "Select an option: ";
+        cin >> choice;
+
+        switch (choice) {
+            case 1: { // إضافة حدث
+                string eventName, eventType, eventDate, eventLocation;
+                int seatCount;
+                cout << "Enter event name: ";
+                cin >> eventName;
+                cout << "Enter event type: ";
+                cin >> eventType;
+                cout << "Enter event date (YYYY-MM-DD): ";
+                cin >> eventDate;
+                cout << "Enter event location: ";
+                cin >> eventLocation;
+                cout << "Enter seat count: ";
+                cin >> seatCount;
+                Event::addEvent(eventName, eventType, eventDate, eventLocation, seatCount);
+                break;
+            }
+            case 2: { // حذف حدث
+                int eventID;
+                cout << "Enter event ID to delete: ";
+                cin >> eventID;
+                Event::deleteEvent(eventID);
+                break;
+            }
+            case 3: // عرض الأحداث
+                Event::viewEvents();
+                break;
+            case 0: // العودة إلى القائمة الرئيسية
+                return;
+            default:
+                cout << "Invalid choice.\n"; // خيار غير صالح
+        }
+    }
+}
+
+// قائمة خيارات المستخدم
+void User::userMenu() {
+    int choice;
+    while (true) {
+        cout << "\n--- User Menu ---\n";
+        cout << "1. Choose Event\n"; // اختيار حدث
+        cout << "2. View Available Seats\n"; // عرض المقاعد المتاحة
+        cout << "3. Book Seats\n"; // حجز مقاعد
+        cout << "4. View My Reservations\n"; // عرض الحجوزات الخاصة بي
+        cout << "5. Modify My Booking\n"; // تعديل حجزي
+        cout << "6. Cancel My Booking\n"; // إلغاء حجزي
+        cout << "0. Return to Main Menu\n"; // العودة إلى القائمة الرئيسية
+        cout << "Select an option: ";
+        cin >> choice;
+
+        switch (choice) {
+            case 1: { // اختيار حدث
+                Event::viewEvents();
+                int eventID;
+                cout << "Enter event ID to choose: ";
+                cin >> eventID;
+                Event* event = Event::findEventByID(eventID);
+                if (event) {
+                    cout << "Event '" << event->getName() << "' selected successfully.\n";
+                } else {
+                    cout << "Invalid event ID.\n"; // معرف حدث غير صالح
+                }
+                break;
+            }
+            case 2: { // عرض المقاعد المتاحة
+                int eventID;
+                cout << "Enter event ID to view seats: ";
+                cin >> eventID;
+                Event* event = Event::findEventByID(eventID);
+                if (event) {
+                    event->displaySeats(); // عرض المقاعد
+                } else {
+                    cout << "Invalid event ID.\n"; // معرف حدث غير صالح
+                }
+                break;
+            }
+            case 3: { // حجز مقاعد
+                int eventID;
+                cout << "Enter event ID to book seats: ";
+                cin >> eventID;
+                Event* event = Event::findEventByID(eventID);
+                if (!event) {
+                    cout << "Invalid event ID.\n"; // معرف حدث غير صالح
+                    break;
+                }
+                vector<int> seatNumbers;
+                int numSeats;
+                cout << "Enter number of seats to book: ";
+                cin >> numSeats;
+                for (int i = 0; i < numSeats; ++i) {
+                    int seatNumber;
+                    cout << "Enter seat number to book: ";
+                    cin >> seatNumber;
+                    event->reserveSeat(seatNumber); // حجز المقعد
+                    seatNumbers.push_back(seatNumber); // إضافة رقم المقعد إلى القائمة
+                }
+                userBookings[1].emplace_back(Booking(1, eventID, seatNumbers)); // إضافة الحجز إلى خريطة الحجوزات
+                cout << numSeats << " seats successfully booked.\n"; // تأكيد الحجز
+                break;
+            }
+            case 4: // عرض الحجوزات
+                Booking::viewBookings(1); // عرض الحجوزات للمستخدم
+                break;
+            case 5: { // تعديل الحجز
+                int eventID;
+                cout << "Enter event ID to modify booking: ";
+                cin >> eventID;
+                vector<int> newSeats;
+                int newSeatCount;
+                cout << "Enter number of new seats to book: ";
+                cin >> newSeatCount;
+                for (int i = 0; i < newSeatCount; ++i) {
+                    int seatNumber;
+                    cout << "Enter new seat number: ";
+                    cin >> seatNumber;
+                    newSeats.push_back(seatNumber); // إضافة المقاعد الجديدة
+                }
+                Booking booking(1, eventID, newSeats); // إنشاء حجز جديد
+                booking.modifyBooking(newSeats); // تعديل الحجز
+                break;
+            }
+            case 6: { // إلغاء الحجز
+                int eventID;
+                cout << "Enter event ID to cancel booking: ";
+                cin >> eventID;
+                Booking booking(1, eventID, {}); // إنشاء حجز لإلغاءه
+                booking.cancelBooking(); // إلغاء الحجز
+                break;
+            }
+            case 0: // العودة إلى القائمة الرئيسية
+                return;
+            default:
+                cout << "Invalid choice.\n"; // خيار غير صالح
+        }
+    }
+}
+
+// الدالة الرئيسية
+int main() {
+    vector<Person*> people;
+
+    // إضافة مستخدمين (لأغراض الاختبار)
+    people.push_back(new Admin("admin", "admin123"));
+    people.push_back(new User("user", "user123"));
+
+    int mainChoice;
+
+    while (true) {
+        cout << "\n--- Main Menu ---\n"; // القائمة الرئيسية
+        cout << "1. Admin Login\n"; // تسجيل دخول المدير
+        cout << "2. User Login\n"; // تسجيل دخول المستخدم
+        cout << "0. Exit\n"; // الخروج من البرنامج
+        cout << "Select an option: ";
+        cin >> mainChoice;
+
+        switch (mainChoice) {
+            case 1: { // تسجيل دخول المدير
+                bool loggedIn = false;
+                for (Person* person : people) {
+                    if (dynamic_cast<Admin*>(person) && person->login()) {
+                        loggedIn = true;
+                        dynamic_cast<Admin*>(person)->adminMenu(); // عرض قائمة خيارات المدير
+                        break;
+                    }
+                }
+                if (!loggedIn) cout << "Invalid login.\n"; // تسجيل دخول غير صالح
+                break;
+            }
+            case 2: { // تسجيل دخول المستخدم
+                bool loggedIn = false;
+                for (Person* person : people) {
+                    if (dynamic_cast<User*>(person) && person->login()) {
+                        loggedIn = true;
+                        dynamic_cast<User*>(person)->userMenu(); // عرض قائمة خيارات المستخدم
+                        break;
+                    }
+                }
+                if (!loggedIn) cout << "Invalid login.\n"; // تسجيل دخول غير صالح
+                break;
+            }
+            case 0: // الخروج من البرنامج
+                cout << "Exiting the system. Goodbye!\n";
+                return 0;
+            default:
+                cout << "Invalid choice.\n"; // خيار غير صالح
+        }
+    }
+}
