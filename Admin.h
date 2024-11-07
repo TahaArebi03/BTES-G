@@ -19,3 +19,4 @@ public:
     // دالة لعرض قائمة خيارات المدير
     void adminMenu();
 };
+كلاس admin
