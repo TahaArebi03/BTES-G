@@ -111,6 +111,7 @@ public:
     void reserveSeat(int seatNumber);
     void displaySeats() const;
     static void saveToFile(const string& filename);
+    static void loadFromFile(const string& filename); // Load events from file
 };
 
 vector<Event> Event::events;
@@ -124,7 +125,9 @@ Event::Event(const string& eventName, const string& eventType, const string& eve
 }
 
 void Event::addEvent(const string& eventName, const string& eventType, const string& eventDate, const string& eventLocation, int seatCount) {
-    if (eventName.empty() || seatCount <= 0) throw invalid_argument("Invalid event name or seat count.");
+    if (eventName.empty() || seatCount <= 0) throw invalid_argument("Invalid event name or
+or se
+at count.");
     events.push_back(Event(eventName, eventType, eventDate, eventLocation, seatCount));
     cout << "Event added successfully.\n";
     saveToFile("events.txt");
@@ -193,10 +196,29 @@ void Event::saveToFile(const string& filename) {
         throw runtime_error("Unable to open file for writing.");
     }
     for (const Event& event : events) {
-        outFile << event.getEventID() << " " << event.getName() << " " << event.type << " " << event.date << " "
-                << event.getLocation() << " " << event.getAvailableSeats() << endl;
+        outFile << event.getEventID() << " " << event.getName() << " " << event.type << " "
+                << event.date << " " << event.getLocation() << " "
+                << event.getAvailableSeats() << endl;
     }
     outFile.close();
+}
+
+void Event::loadFromFile(const string& filename) {
+    ifstream inFile(filename);
+    if (!inFile) {
+        cout << "No events file found, starting with an empty list.\n";
+        return;
+    }
+
+    while (true) {
+        int id, seatsCount;
+        string eventName, eventType, eventDate, eventLocation;
+        if (!(inFile >> id >> eventName >> eventType >> eventDate >> eventLocation >> seatsCount)) break;
+
+        Event event(eventName, eventType, eventDate, eventLocation, seatsCount);
+        events.push_back(event);
+        nextEventID = max(nextEventID, id + 1); // Update nextEventID
+    }
 }
 
 // Booking Management
@@ -234,7 +256,8 @@ void Booking::cancelBooking() {
 }
 
 void Booking::modifyBooking(const vector<int>& newSeats) {
-    auto& bookings = userBookings[userID];
+    auto& bookings = userBoo
+kings[userID];
     for (Booking& booking : bookings) {
         if (booking.getEventID() == eventID) {
             booking.reservedSeats = newSeats;  // Modify seats
@@ -356,7 +379,7 @@ void User::userMenu() {
             case 3: {
                 int eventID;
                 cout << "Enter event ID to book seats: ";
-                cin >> eventID;
+cin >> eventID;
                 Event* event = Event::findEventByID(eventID);
                 if (!event) {
                     cout << "Invalid event ID.\n";
@@ -448,6 +471,9 @@ int main() {
     // Sample admin (for testing purposes)
     people.push_back(new Admin("admin", "admin123"));
 
+    // Load events from file
+    Event::loadFromFile("events.txt");
+
     int mainChoice;
 
     while (true) {
@@ -469,7 +495,7 @@ int main() {
                         break;
                     }
                 }
-                if (!loggedIn) cout << "Invalid login.\n";
+if (!loggedIn) cout << "Invalid login.\n";
                 break;
             }
             case 2: {
