@@ -40,4 +40,4 @@ public:
 
     // دالة ثابتة لحفظ معلومات المستخدم في ملف
     static void saveUserToFile(const User& user);
-};
+}; كلاس user
