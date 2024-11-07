@@ -132,6 +132,9 @@
   <ItemGroup>
     <ClInclude Include="Booking.h" />
     <ClInclude Include="Event.h" />
+    <ClInclude Include="Notification.h" />
+    <ClInclude Include="Seat.h" />
+    <ClInclude Include="Seats.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
