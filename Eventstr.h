@@ -66,4 +66,4 @@ Event::Event(const string& eventName, const string& eventType, const string& eve
     }
 }
 
-// باقي الدوال الخاصة بكلاس Event يجب تعريفها
+كلاس خاصة بال event
