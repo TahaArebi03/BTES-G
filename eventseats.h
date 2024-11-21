@@ -18,4 +18,4 @@ public:
         if (isReserved) throw runtime_error("Seat already reserved."); // إذا كان محجوزًا بالفعل
         isReserved = true; // تغيير الحالة إلى محجوز
     }
-};
+}; كلاس خاص بالseat
