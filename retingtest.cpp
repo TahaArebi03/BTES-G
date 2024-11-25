@@ -7,7 +7,7 @@ TEST_CASE("Rating class tests") {
 
     SECTION("Adding valid ratings") {
         REQUIRE_NOTHROW(ratingSystem.addRating(5, "Excellent!", "User1"));
-        REQUIRE_NOTHROW(ratingSystem.addRating(7, "Average.", "User2"));
+        REQUIRE_NOTHROW(ratingSystem.addRating(2, "Average.", "User2"));
         REQUIRE_NOTHROW(ratingSystem.addRating(1, "Poor.", "User3"));
     }
 
