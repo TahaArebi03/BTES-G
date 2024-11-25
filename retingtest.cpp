@@ -1,6 +1,6 @@
 #define CATCH_CONFIG_MAIN
 #include <catch.hpp>
-#include "reting.h" // Include the header file where your Rating class is defined
+#include "testpayment.h" // تأكد أنك قد أدرجت اسم الملف الصحيح
 
 TEST_CASE("Rating class tests") {
     Rating ratingSystem;
@@ -9,6 +9,9 @@ TEST_CASE("Rating class tests") {
         REQUIRE_NOTHROW(ratingSystem.addRating(5, "Excellent!", "User1"));
         REQUIRE_NOTHROW(ratingSystem.addRating(2, "Average.", "User2"));
         REQUIRE_NOTHROW(ratingSystem.addRating(1, "Poor.", "User3"));
+        // اختبار تعليق طويل جداً
+        REQUIRE_THROWS_AS(ratingSystem.addRating(5, std::string(600, 'a'), "User2"), std::invalid_argument);
+        REQUIRE(ratingSystem.getRatings().size() == 0); // لا يوجد تقييم
     }
 
     SECTION("Adding invalid ratings") {
