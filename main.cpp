@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <stdexcept>
 #include <memory>
+#include <fstream>
+
 
 using namespace std;
 
@@ -23,7 +25,7 @@ protected:
 
 public:
     Person(string user, string pass) : username(user), password(pass) {}
-    virtual bool login() = 0; // Ø¯Ø§Ù„Ø© ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø¯Ø®ÙˆÙ„
+    virtual bool login() = 0; // ÏÇáÉ ÊÓÌíá ÇáÏÎæá
     string getUsername() const { return username; }
     string getPassword() const { return password; }
 };
@@ -95,7 +97,7 @@ public:
     }
 };
 
-// ØªØ¹Ø±ÙŠÙ Ø§Ù„Ù…ØªØºÙŠØ± Ø§Ù„Ø«Ø§Ø¨Øª
+// ÊÚÑíİ ÇáãÊÛíÑ ÇáËÇÈÊ
 int Notification::nextNotificationID = 1;
 
 // --- NotificationManager Class ---
@@ -113,6 +115,67 @@ public:
     }
 };
 
+// --- Seat Class ---
+class Seat {
+private:
+    int seatNumber;       // ÑŞã ÇáãŞÚÏ
+    bool isReserved;      // ÍÇáÉ ÇáÍÌÒ (ãÍÌæÒ Ãæ ãÊÇÍ)
+    int eventID;          // ÑŞã ÇáÍÏË ÇáãÑÊÈØ ÈÇáãŞÚÏ
+    string reservedBy;    // ÇÓã ÇáãÓÊÎÏã ÇáĞí ÍÌÒ ÇáãŞÚÏ
+
+public:
+    // Constructor
+    Seat(int number, int eID) : seatNumber(number), eventID(eID), isReserved(false), reservedBy("") {}
+
+    // Getter for seat number
+    int getSeatNumber() const { return seatNumber; }
+
+    // Getter for event ID
+    int getEventID() const { return eventID; }
+
+    // Check if the seat is reserved
+    bool getIsReserved() const { return isReserved; }
+
+    // Get reserved by
+    string getReservedBy() const { return reservedBy; }
+
+    // Reserve the seat
+    bool reserveSeat(const string& username) {
+        if (isReserved) {
+            cout << "Seat " << seatNumber << " is already reserved.\n";
+            return false;
+        }
+        isReserved = true;
+        reservedBy = username;
+        cout << "Seat " << seatNumber << " has been reserved by " << username << ".\n";
+        return true;
+    }
+
+    // Cancel reservation
+    bool cancelReservation(const string& username) {
+        if (!isReserved) {
+            cout << "Seat " << seatNumber << " is not reserved.\n";
+            return false;
+        }
+        if (reservedBy != username) {
+            cout << "You cannot cancel this reservation. It is reserved by " << reservedBy << ".\n";
+            return false;
+        }
+        isReserved = false;
+        reservedBy = "";
+        cout << "Reservation for seat " << seatNumber << " has been canceled.\n";
+        return true;
+    }
+
+    // View seat details
+    void viewSeatDetails() const {
+        cout << "Seat Number: " << seatNumber
+             << ", Event ID: " << eventID
+             << ", Status: " << (isReserved ? "Reserved" : "Available")
+             << (isReserved ? ", Reserved by: " + reservedBy : "") << endl;
+    }
+};
+
 // --- Event Class ---
 class Event {
 private:
@@ -122,39 +185,47 @@ private:
     string date;
     string location;
     double price;
+    vector<Seat> seats;
 
 public:
     static vector<Event> events; // Declaration
-    static int nextEventID;      // Declaration
-
-    Event(const string &eventName, const string &eventType, const string &eventDate, const string &eventLocation, double eventPrice)
-        : eventID(nextEventID++), name(eventName), type(eventType), date(eventDate), location(eventLocation), price(eventPrice) {}
-
-    // ØªØ¹Ø±ÙŠÙ Ù…Ø´ØºÙ„ == Ù„Ù„Ù…Ù‚Ø§Ø±Ù†Ø© Ø¨ÙŠÙ† ÙƒØ§Ø¦Ù†Ø§Øª Event
+    static int nextEventID;
     bool operator==(const Event& other) const {
-        return (eventID == other.eventID &&
-                name == other.name &&
-                type == other.type &&
-                date == other.date &&
-                location == other.location &&
-                price == other.price);
+        return eventID == other.eventID; // ãŞÇÑäÉ ÈÇÓÊÎÏÇã ID
+    }
+    const vector<Seat>& getSeats() const {
+        return seats;
+    }    // Declaration
+
+    Event(const string &eventName, const string &eventType, const string &eventDate, const string &eventLocation, double eventPrice, int totalSeats)
+        : eventID(nextEventID++), name(eventName), type(eventType), date(eventDate), location(eventLocation), price(eventPrice) {
+        // ÅäÔÇÁ ÇáãŞÇÚÏ ÚäÏ ÅäÔÇÁ ÇáÍÏË
+        for (int i = 1; i <= totalSeats; ++i) {
+            seats.emplace_back(i, eventID);
+        }
     }
 
     double getPrice() const { return price; }
     string getName() const { return name; }
 
-    static void addEvent(const string &eventName, const string &eventType, const string &eventDate, const string &eventLocation, double eventPrice, NotificationManager& nm) {
-        events.push_back(Event(eventName, eventType, eventDate, eventLocation, eventPrice));
-        nm.addNotification("New event added: " + eventName, "all_users"); // Ø¥Ø¹Ù„Ø§Ù… Ø¬Ù…ÙŠØ¹ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙŠÙ†
-        cout << "Event added successfully.\n";
-    }
-
     static void viewEvents() {
         cout << "--- Events ---\n";
         for (const Event &event : events) {
-            cout << "ID: " << event.eventID << ", Name: " << event.getName()
-                 << ", Type: " << event.type << ", Date: " << event.date
-                 << ", Location: " << event.location << ", Price: $" << event.price << endl;
+            cout << "ID: " << event.eventID
+                 << ", Name: " << event.getName()
+                 << ", Type: " << event.type
+                 << ", Date: " << event.date
+                 << ", Location: " << event.location
+                 << ", Price: $" << event.price << endl;
+
+            // ÚÑÖ ÇáãŞÇÚÏ ÇáãÊÇÍÉ
+            cout << "Available Seats: ";
+            for (const auto& seat : event.seats) {
+                if (!seat.getIsReserved()) {
+                    cout << seat.getSeatNumber() << " ";
+                }
+            }
+            cout << endl; // ÇáÇäÊŞÇá ááÓØÑ ÇáÌÏíÏ ÈÚÏ ÚÑÖ ÇáãŞÇÚÏ
         }
     }
 
@@ -162,9 +233,45 @@ public:
         auto it = find_if(events.begin(), events.end(), [eventID](const Event &e) { return e.eventID == eventID; });
         return (it != events.end()) ? &(*it) : nullptr;
     }
+
+    void viewSeats() const {
+        cout << "--- Seats for Event: " << name << " ---\n";
+        for (const auto& seat : seats) {
+            seat.viewSeatDetails();
+        }
+    }
+
+    bool reserveSeat(int seatNumber, const string& username) {
+        Seat* seat = findSeat(seatNumber);
+        if (seat) {
+            return seat->reserveSeat(username);
+        }
+        cout << "Seat not found.\n";
+        return false;
+    }
+
+    bool cancelSeatReservation(int seatNumber, const string& username) {
+        Seat* seat = findSeat(seatNumber);
+        if (seat) {
+            return seat->cancelReservation(username);
+        }
+        cout << "Seat not found.\n";
+        return false;
+    }
+
+    Seat* findSeat(int seatNumber) {
+        for (auto& seat : seats) {
+            if (seat.getSeatNumber() == seatNumber) {
+                return &seat;
+            }
+        }
+        return nullptr;
+    }
+
+
 };
 
-// ØªØ¹Ø±ÙŠÙ Ø§Ù„Ù…ØªØºÙŠØ±Ø§Øª Ø§Ù„Ø«Ø§Ø¨ØªØ©
+// ÊÚÑíİ ÇáãÊÛíÑÇÊ ÇáËÇÈÊÉ
 vector<Event> Event::events; // Definition
 int Event::nextEventID = 1;  // Definition
 
@@ -229,7 +336,7 @@ class User : public Person {
 public:
     vector<Rating> ratings; // Make ratings public
     static vector<User> users;
-    NotificationManager notificationManager; // Ø¥Ø¶Ø§ÙØ© NotificationManager Ù„Ù„Ù…Ø³ØªØ®Ø¯Ù…
+    NotificationManager notificationManager; // ÅÖÇİÉ NotificationManager ááãÓÊÎÏã
 
     User(string user, string pass, int id, double initialBalance)
         : Person(user, pass), userID(id), balance(initialBalance) {}
@@ -261,8 +368,8 @@ public:
         cout << "Enter new password: ";
         cin >> password;
 
-        User newUser(username, password, id, 1000.0); // ØªØ¹ÙŠÙŠÙ† Ø±ØµÙŠØ¯ Ø£ÙˆÙ„ÙŠ 1000
-        users.push_back(newUser); // Ø¥Ø¶Ø§ÙØ© Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù… Ø¥Ù„Ù‰ Ø§Ù„Ù‚Ø§Ø¦Ù…Ø©
+        User newUser(username, password, id, 1000.0); // ÊÚííä ÑÕíÏ Ãæáí 1000
+        users.push_back(newUser); // ÅÖÇİÉ ÇáãÓÊÎÏã Åáì ÇáŞÇÆãÉ
         return newUser;
     }
 
@@ -285,7 +392,8 @@ public:
             cout << "4. Rate and Comment on Event\n";
             cout << "5. View Notifications\n";
             cout << "6. Pay for Booking\n";
-            cout << "0. Logout\n"; // Ø®ÙŠØ§Ø± ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø®Ø±ÙˆØ¬
+            cout << "7. Choose Seat\n";  // ÅÖÇİÉ ÎíÇÑ ÇÎÊíÇÑ ãŞÚÏ
+            cout << "0. Logout\n";       // ÎíÇÑ ÊÓÌíá ÇáÎÑæÌ
             cout << "Enter your choice: ";
             cin >> choice;
 
@@ -299,10 +407,10 @@ public:
                     cin >> eventID;
                     Event* event = Event::findEventByID(eventID);
                     if (event) {
+                        // ÍÌÒ ÇáÍÏË
                         if (balance >= event->getPrice()) {
                             bookings.push_back(Booking(bookings.size() + 1, eventID, event->getPrice()));
                             balance -= event->getPrice();
-                            notificationManager.addNotification("You have successfully booked the event: " + event->getName(), username); // Ø¥Ø¹Ù„Ø§Ù… Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…
                             cout << "Booking successful for event: " << event->getName() << endl;
                         } else {
                             cout << "Insufficient balance to book this event.\n";
@@ -311,89 +419,70 @@ public:
                         cout << "Event not found.\n";
                     }
                     break;
+                }case 3: {
+    cout << "--- Your Bookings ---\n";
+    for (const auto& booking : bookings) {
+        cout << "Booking ID: " << booking.bookingID
+             << ", Event ID: " << booking.eventID
+             << ", Amount: $" << booking.amount << endl;
+
+        Event* event = Event::findEventByID(booking.eventID);
+        if (event) {
+            // ÚÑÖ ÇáãŞÇÚÏ ÇáãÍÌæÒÉ İí ÇáÍÏË
+            cout << "Reserved Seats: ";
+            for (const auto& seat : event->getSeats()) { // ÇÓÊÎÏÇã ÇáÏÇáÉ ÇáÌÏíÏÉ
+                if (seat.getIsReserved() && seat.getReservedBy() == username) {
+                    cout << seat.getSeatNumber() << " ";
                 }
-                case 3:
-                    cout << "--- Your Bookings ---\n";
-                    for (const auto& booking : bookings) {
-                        cout << "Booking ID: " << booking.bookingID << ", Event ID: " << booking.eventID << ", Amount: $" << booking.amount << endl;
-                    }
-                    break;
-                case 4: {
-                    int eventID;
-                    cout << "Enter event ID to rate: ";
-                    cin >> eventID;
-                    int rating;
-                    string comment;
-                    cout << "Enter your rating (1-5): ";
-                    cin >> rating;
-                    cout << "Enter your comment: ";
-                    cin.ignore();
-                    getline(cin, comment);
-                    ratings.push_back(Rating(eventID, rating, comment));
-                    notificationManager.addNotification("You rated event ID " + to_string(eventID), username);
-                    break;
-                }
-                case 5:
-                    notificationManager.viewNotifications(username);
-               case 6: { // Ø®ÙŠØ§Ø± Ø§Ù„Ø¯ÙØ¹
-    int bookingID;
-    cout << "Enter booking ID to pay for: ";
-    cin >> bookingID;
-    Booking* booking = findBookingByID(bookingID);
-    if (booking) {
-        string paymentType;
-        cout << "Select payment method:\n";
-        cout << "1. Credit Card\n";
-        cout << "2. PayPal\n";
-        cout << "3. Bank Transfer\n";
-        cout << "4. Cash\n";
-        cout << "Enter your choice: ";
-        cin >> choice;
-        switch (choice) {
-            case 1:
-                paymentType = "CreditCard";
-                break;
-            case 2:
-                paymentType = "PayPal";
-                break;
-            case 3:
-                paymentType = "BankTransfer";
-                break;
-            case 4:
-                paymentType = "Cash";
-                break;
-            default:
-                cout << "Invalid payment method. Defaulting to Cash.\n";
-                paymentType = "Cash";
+            }
+            cout << endl;
         }
-        auto payment = PaymentFactory::createPayment(paymentType);
-        payment->pay(booking->amount);
-        balance -= booking->amount;
-
-        // Ø¥Ø±Ø³Ø§Ù„ Ø¥Ø´Ø¹Ø§Ø± Ø¨Ø¹Ø¯ Ø§Ù„Ø¯ÙØ¹
-        notificationManager.addNotification(
-            "Payment successful: $" + to_string(booking->amount) + " has been deducted. Remaining balance: $" + to_string(balance),
-            username
-        );
-
-        cout << "Payment successful. You paid $" << booking->amount << ". Remaining balance: $" << balance << ".\n";
-    } else {
-        cout << "Booking not found.\n";
     }
     break;
 }
-
-                case 0: // ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø®Ø±ÙˆØ¬
+                case 4:
+                    // ÊŞííã ÇáÍÏË
+                    break;
+                case 5:
+                    // ÚÑÖ ÇáÅÔÚÇÑÇÊ
+                    notificationManager.viewNotifications(username);
+                    break;
+                case 6:
+                    // ÇáÏİÚ ááÍÌÒ
+                    break;
+                case 7: {
+                    // ÇÎÊíÇÑ ÇáãŞÚÏ
+                    int eventID, seatNumber;
+                    cout << "Enter Event ID to choose a seat: ";
+                    cin >> eventID;
+                    Event* event = Event::findEventByID(eventID);
+                    if (event) {
+                        event->viewSeats();
+                        cout << "Enter Seat Number to reserve: ";
+                        cin >> seatNumber;
+                        if (event->reserveSeat(seatNumber, username)) {
+                            cout << "Seat reserved successfully.\n";
+                        } else {
+                            cout << "Failed to reserve seat.\n";
+                        }
+                    } else {
+                        cout << "Event not found.\n";
+                    }
+                    break;
+                }
+                case 0:
                     cout << "Logging out...\n";
-                    return; // ØªÙ†ØªÙ‡ÙŠ Ø§Ù„Ø­Ù„Ù‚Ø© ÙˆØªØ¹ÙˆØ¯ Ø¥Ù„Ù‰ Ø§Ù„Ù‚Ø§Ø¦Ù…Ø© Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠØ©
+                    return;
                 default:
                     cout << "Invalid choice! Try again.\n";
             }
         }
     }
+
+
 };
 
-// ØªØ¹Ø±ÙŠÙ Ù‚Ø§Ø¦Ù…Ø© Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙŠÙ†
+// ÊÚÑíİ ŞÇÆãÉ ÇáãÓÊÎÏãíä
 vector<User> User::users;
 
 // --- Admin Class ---
@@ -411,15 +500,15 @@ public:
         return (enteredUsername == username && enteredPassword == password);
     }
 
-    void adminMenu(NotificationManager& nm) { // ØªÙ…Ø±ÙŠØ± NotificationManager
+    void adminMenu(NotificationManager& nm) { // ÊãÑíÑ NotificationManager
         int choice;
         while (true) {
             cout << "\n--- Admin Menu ---\n";
             cout << "1. Add Event\n";
             cout << "2. View Events\n";
             cout << "3. View Ratings and Comments\n";
-            cout << "4. Delete Event\n"; // Ø®ÙŠØ§Ø± Ù„Ø¥Ù„ØºØ§Ø¡ Ø­Ø¯Ø«
-            cout << "0. Logout\n"; // Ø®ÙŠØ§Ø± ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø®Ø±ÙˆØ¬
+            cout << "4. Delete Event\n"; // ÎíÇÑ áÅáÛÇÁ ÍÏË
+            cout << "0. Logout\n"; // ÎíÇÑ ÊÓÌíá ÇáÎÑæÌ
             cout << "Enter your choice: ";
             cin >> choice;
 
@@ -427,6 +516,7 @@ public:
                 case 1: {
                     string name, type, date, location;
                     double price;
+                    int totalSeats;
                     cout << "Enter event name: ";
                     cin.ignore();
                     getline(cin, name);
@@ -438,7 +528,12 @@ public:
                     getline(cin, location);
                     cout << "Enter event price: ";
                     cin >> price;
-                    Event::addEvent(name, type, date, location, price, nm); // ØªÙ…Ø±ÙŠØ± NotificationManager
+                    cout << "Enter total seats: ";
+                    cin >> totalSeats;
+                    Event newEvent(name, type, date, location, price, totalSeats);
+                    Event::events.push_back(newEvent);
+                    nm.addNotification("New event added: " + name, "all_users");
+                    cout << "Event added successfully.\n";
                     break;
                 }
                 case 2:
@@ -451,7 +546,7 @@ public:
                     Event* eventToDelete = Event::findEventByID(eventID);
                     if (eventToDelete) {
                         Event::events.erase(remove(Event::events.begin(), Event::events.end(), *eventToDelete), Event::events.end());
-                        nm.addNotification("Event canceled: " + eventToDelete->getName(), "all_users"); // Ø¥Ø¹Ù„Ø§Ù… Ø¬Ù…ÙŠØ¹ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙŠÙ†
+                        nm.addNotification("Event canceled: " + eventToDelete->getName(), "all_users");
                         cout << "Event deleted successfully.\n";
                     } else {
                         cout << "Event not found.\n";
@@ -471,9 +566,9 @@ public:
                     }
                     break;
                 }
-                case 0: // ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø®Ø±ÙˆØ¬
+                case 0: // ÊÓÌíá ÇáÎÑæÌ
                     cout << "Logging out...\n";
-                    return; // ØªÙ†ØªÙ‡ÙŠ Ø§Ù„Ø­Ù„Ù‚Ø© ÙˆØªØ¹ÙˆØ¯ Ø¥Ù„Ù‰ Ø§Ù„Ù‚Ø§Ø¦Ù…Ø© Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠØ©
+                    return; // ÊäÊåí ÇáÍáŞÉ æÊÚæÏ Åáì ÇáŞÇÆãÉ ÇáÑÆíÓíÉ
                 default:
                     cout << "Invalid choice! Try again.\n";
             }
@@ -492,7 +587,6 @@ int main() {
         cout << "0. Exit\n";
         cout << "Enter your choice: ";
         cin >> choice;
-
         switch (choice) {
             case 1: {
                 string username, password;
@@ -501,20 +595,25 @@ int main() {
                 cout << "Enter password: ";
                 cin >> password;
 
-                User user(username, password, User::users.size() + 1, 1000.0); // Ø¥Ù†Ø´Ø§Ø¡ Ù…Ø³ØªØ®Ø¯Ù… Ø¬Ø¯ÙŠØ¯
-                if (user.login()) {
-                    cout << "Login successful. Welcome, " << user.getUsername() << "!\n";
-                    user.userMenu();
+                auto it = find_if(User::users.begin(), User::users.end(),
+                                  [&username, &password](const User& user) {
+                                      return user.getUsername() == username && user.getPassword() == password;
+                                  });
+
+                if (it != User::users.end()) {
+                    it->userMenu(); // ÏÎæá ÇáãÓÊÎÏã
                 } else {
                     cout << "Login failed. Try again.\n";
                 }
                 break;
             }
             case 2: {
-                Admin admin("admin", "1234");
+                string adminUsername = "admin";
+                string adminPassword = "1234"; // ßáãÉ ÇáãÑæÑ ÇáÇİÊÑÇÖíÉ
+                Admin admin(adminUsername, adminPassword);
+
                 if (admin.login()) {
-                    cout << "Admin login successful.\n";
-                    admin.adminMenu(nm); // pass the NotificationManager object
+                    admin.adminMenu(nm); // ÏÎæá ÇáãÏíÑ
                 } else {
                     cout << "Admin login failed. Try again.\n";
                 }
@@ -522,18 +621,20 @@ int main() {
             }
             case 3: {
                 try {
-                    User::createUser(User::users.size() + 1); // Ø¥Ø¶Ø§ÙØ© Ù…Ø³ØªØ®Ø¯Ù… Ø¬Ø¯ÙŠØ¯
-                    cout << "New user created successfully.\n";
+                    User newUser = User::createUser(User::users.size() + 1);
+                    cout << "User created successfully with username: " << newUser.getUsername() << endl;
                 } catch (const invalid_argument& e) {
-                    cout << "Error: " << e.what() << "\n";
+                    cout << e.what() << endl;
                 }
                 break;
             }
             case 0:
                 cout << "Exiting...\n";
-                return 0;
+                return 0; // ÅäåÇÁ ÇáÈÑäÇãÌ
             default:
                 cout << "Invalid choice! Try again.\n";
         }
     }
+
+    return 0;
 }
